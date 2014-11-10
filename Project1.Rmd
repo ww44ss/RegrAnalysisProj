@@ -5,30 +5,125 @@ date: "November 9, 2014"
 output: pdf_document
 ---
 
-###synopsis
+###Executive Summary
 
 
 ###exploratory data analysis
 
 ```{r}
 data(mtcars)
+
+pairs(~mpg+disp+am+hp+wt,data=mtcars, 
+   main="Exploratory Analysis")
+
 ```
+  
 
+There are data for `r nrow(mtcars)` different cars in the data set.  
+The data present are _`r colnames(mtcars)`_.  
 
+mpg	Miles/(US) gallon
+cyl	Number of cylinders
+disp	Displacement (cu.in.)
+hp	Gross horsepower
+drat	Rear axle ratio
+wt	Weight (lb/1000)
+qsec	1/4 mile time
+vs	V/S
+am	Transmission (0 = automatic, 1 = manual)
+gear	Number of forward gears
+carb	Number of carburetors
 
-```{r}
+An exploratory analysis of the dependcies of mpg on several of the factors in the mtcars dataset show there are multiple dependencies. To understand how transmission type affects mpg we need account for these other factors. 
 
-plot(jitter(mpg,4)~wt, data=mtcars, pch=19, col="slateblue2", xlab="weight", ylab="mpg")
-```
-
-There are `r nrow(mtcars)` elements in the data set.  
-The data present are `r colnames(mtcars)`.  
+As you can see from the graph, displacement and horsepower tend to follow weigth. So we'll focus on correcting for the weight factor in mpg and look at residual.
 
 ###linear model
 
-```{r}
-carlm <- lm(mpg~wt, mtcars)
+The linear model shown in the graph above clearly does not fit the observed behavior.  
+The reason the linear fit doesn't work well is because mpg is a kind of _reciprocal_ energy (gallons of gasoline are equivalent to a measure of energy). The energy to accelerate a mass _m_ to speed _v_ is proportional to m so it makes sense to look at a reciprocal. 
 
-abline(carlm, col="red", wt=2)
+This suggests an inverse relationship between _mpg_ and _weight_ should be explored.
+
+
+```{r}
+library(plyr)
+library(ggplot2)
+
+p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
+
+p
+
+```
+ 
+
+##nonlinear model of mpg versus wt
+
+To fit the data try a functional relationship _mpg~ a + b/wt_ with a and b constants to be determined. The graph below shows the fit. 
+
+```{r}
+
+carnls <- nls(mpg~a1 + b1/hp, mtcars, start = list(a1=1, b1=50))
+
+
+carnls
+
+ss<-seq(from = min(mtcars$hp), to = max(mtcars$hp), length = 50)
+
+
+plot(jitter(mpg,4)~hp, data=mtcars, pch=19, col="slateblue2", xlab="horsepower", ylab="mpg")
+
+
+yy <- predict(carnls,list(hp = ss))
+
+lines(ss, yy, col = "orange4", lwd=3)
+
+```
+
+###Model Residuals
+
+```{r}
+
+mpgpredict<-predict(carnls)
+
+plot((mpg-mpgpredict)~hp, data=mtcars)
+
+hist(mtcars$mpg-mpgpredict, breaks=18, col="wheat3", xlab="mpg residual", main="Histogram of mpg residuals")
+
+```
+
+
+```{r}
+library(plyr)
+
+mpgresids <- mtcars$mpg-mpgpredict
+
+mtcars2<-cbind(mtcars, mpgresids)
+
+p<-ggplot(mtcars2, aes(hp, mpgresids, color=factor(am))) + geom_point()
+
+p
+
+p<-ggplot(mtcars, aes(hp, mpg, color=factor(am))) + geom_point()
+
+p
+
+```
+
+
+```{r}
+library(plyr)
+
+mpgresids <- mtcars$mpg-mpgpredict
+
+mtcars2<-cbind(mtcars, mpgresids)
+
+p<-ggplot(mtcars2, aes(wt, mpgresids, color=factor(am))) + geom_point()
+
+p
+
+p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
+
+p
 
 ```
