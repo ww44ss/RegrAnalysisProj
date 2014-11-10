@@ -100,11 +100,11 @@ mpgresids <- mtcars$mpg-mpgpredict
 
 mtcars2<-cbind(mtcars, mpgresids)
 
-p<-ggplot(mtcars2, aes(hp, mpgresids, color=factor(am))) + geom_point()
+p<-ggplot(mtcars2, aes(wt, mpgresids, color=factor(am))) + geom_point()
 
 p
 
-p<-ggplot(mtcars, aes(hp, mpg, color=factor(am))) + geom_point()
+p<-ggplot(mtcars, aes(hp, wt, color=factor(am))) + geom_point()
 
 p
 
@@ -113,6 +113,8 @@ p
 
 ```{r}
 library(plyr)
+
+## calculate residuals ad bind to mtcars to do some plotting
 
 mpgresids <- mtcars$mpg-mpgpredict
 
@@ -127,3 +129,25 @@ p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
 p
 
 ```
+
+
+```{r}
+##here we do statistics on the residuals
+
+
+autoresids <- mtcars2[mtcars$am==0,]
+manresids <- mtcars2[mtcars$am==1,]
+
+meanautoresids<-mean(autoresids$mpgresids)
+sdautoresids<-sd(autoresids$mpgresids)
+nautoresids <- nrow(autoresids)
+
+meanmanresids<-mean(manresids$mpgresids)
+sdmanresids<-sd(manresids$mpgresids)
+nmanresids <- nrow(manresids)
+
+
+aaa<-t.test(autoresids$mpgresids, manresids$mpgresids, alternative="less")
+pv<-aaa$p.value
+lc<-aaa$conf.int[1]
+uc<-aaa$conf.int[2]
