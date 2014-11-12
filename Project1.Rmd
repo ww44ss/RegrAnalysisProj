@@ -7,13 +7,19 @@ output: pdf_document
 
 ###Executive Summary
 
+This analysis looks at the energy efficiency (~ mpg) of cars in the Motor Trend data set and the factors affecting it. Particularly, it addresses the hyptohesis that manual transmissions are more efficient (have higher mpg) than automatic transmissions. 
+
+To address this, the analysis takes the approach of linearizing the "physics" by looking at the affects of confounding variables like horsepower (hp) and vehicle weight (wt) on gallons per mile. 
 
 ###exploratory data analysis
 
 ```{r}
 data(mtcars)
+library(plyr)
 
-pairs(~mpg+disp+am+hp+wt,data=mtcars, 
+mtcars2=mutate(mtcars, gpm=1/mpg)
+
+pairs(~gpm+disp+am+hp+wt,data=mtcars2, 
    main="Exploratory Analysis")
 
 ```
@@ -34,7 +40,9 @@ am	Transmission (0 = automatic, 1 = manual)
 gear	Number of forward gears
 carb	Number of carburetors
 
-An exploratory analysis of the dependcies of mpg on several of the factors in the mtcars dataset show there are multiple dependencies. To understand how transmission type affects mpg we need account for these other factors. 
+The exploratory analysis shows there are multiple dependencies. To understand how transmission type affects mpg we need account for these other factors. 
+
+Note that 
 
 As you can see from the graph, displacement and horsepower tend to follow weigth. So we'll focus on correcting for the weight factor in mpg and look at residual.
 
@@ -50,7 +58,7 @@ This suggests an inverse relationship between _mpg_ and _weight_ should be explo
 library(plyr)
 library(ggplot2)
 
-p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
+p<-ggplot(mtcars2, aes(wt, gpm, color=factor(am))) + geom_point()
 
 p
 
@@ -62,6 +70,8 @@ p
 To fit the data try a functional relationship _mpg~ a + b/wt_ with a and b constants to be determined. The graph below shows the fit. 
 
 ```{r}
+
+mtcarsm <- mutate
 
 carnls <- nls(mpg~a1 + b1/hp, mtcars, start = list(a1=1, b1=50))
 
