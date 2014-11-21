@@ -19,7 +19,7 @@ library(plyr)
 
 mtcars2=mutate(mtcars, gpm=1/mpg)
 
-pairs(~gpm+disp+am+hp+wt,data=mtcars2, 
+pairs(mpg~disp+am+hp+wt,data=mtcars, 
    main="Exploratory Analysis")
 
 ```
@@ -46,21 +46,22 @@ Note that
 
 As you can see from the graph, displacement and horsepower tend to follow weigth. So we'll focus on correcting for the weight factor in mpg and look at residual.
 
-###linear model
-
-The linear model shown in the graph above clearly does not fit the observed behavior.  
-The reason the linear fit doesn't work well is because mpg is a kind of _reciprocal_ energy (gallons of gasoline are equivalent to a measure of energy). The energy to accelerate a mass _m_ to speed _v_ is proportional to m so it makes sense to look at a reciprocal. 
-
-This suggests an inverse relationship between _mpg_ and _weight_ should be explored.
+##linear Model
 
 
 ```{r}
 library(plyr)
 library(ggplot2)
 
-p<-ggplot(mtcars2, aes(wt, gpm, color=factor(am))) + geom_point()
-
+p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
 p
+
+f1<-lm(mpg~ wt, data=mtcars)
+rf1<-residuals(f1)
+
+rf1
+
+#p<-ggplot(mtcars, aes(wt, rf1, color=factor(am))) + geom_point()
 
 ```
  
@@ -71,7 +72,6 @@ To fit the data try a functional relationship _mpg~ a + b/wt_ with a and b const
 
 ```{r}
 
-mtcarsm <- mutate
 
 carnls <- nls(mpg~a1 + b1/hp, mtcars, start = list(a1=1, b1=50))
 
@@ -99,6 +99,8 @@ mpgpredict<-predict(carnls)
 plot((mpg-mpgpredict)~hp, data=mtcars)
 
 hist(mtcars$mpg-mpgpredict, breaks=18, col="wheat3", xlab="mpg residual", main="Histogram of mpg residuals")
+
+residuals(carnls)
 
 ```
 
