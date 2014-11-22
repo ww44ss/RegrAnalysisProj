@@ -19,7 +19,7 @@ library(plyr)
 
 mtcars2=mutate(mtcars, gpm=1/mpg)
 
-pairs(mpg~disp+am+hp+wt,data=mtcars, 
+pairs(mpg~disp+am+wt,data=mtcars, 
    main="Exploratory Analysis")
 
 ```
@@ -42,33 +42,90 @@ carb	Number of carburetors
 
 The exploratory analysis shows there are multiple dependencies. To understand how transmission type affects mpg we need account for these other factors. 
 
-Note that 
 
 As you can see from the graph, displacement and horsepower tend to follow weigth. So we'll focus on correcting for the weight factor in mpg and look at residual.
 
-##linear Model
+##linear Model with weight as predictor is insufficient
 
 
 ```{r}
 library(plyr)
 library(ggplot2)
+data(mtcars)
 
-p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
-p
+p1<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point(size=3)
+p1<-p1+ggtitle("mpg versus weight")
+p1<-p1+labs(x="weight (1000's of lbs)", y="miles per gallon")
+#p1<-p1+geom_smooth(method=lm)
+
 
 f1<-lm(mpg~ wt, data=mtcars)
-rf1<-residuals(f1)
+int<-coef(f1)[1]
+slp<-coef(f1)[2]
 
-rf1
 
-#p<-ggplot(mtcars, aes(wt, rf1, color=factor(am))) + geom_point()
+p1<-p1+geom_abline(intercept=int, slope=slp)
+p1
+
+
+```
+
+
+In the above graph the fitted line does not go an adequate job of accounting for about `r 100*summary(f1)$r.squared`% of the overall variation. It is easily recognized that there are systematic variations tht are un accounted for by looking at a residual plot of the data for automatic and manual transmissions.
+
+
+```{r}
+
+
+
+rmpg<-residuals(f1)
+resid<-as.data.frame(rmpg)
+
+resid$rmpg
+
+mtcars1<-cbind(mtcars, resid$rmpg)
+
+head(mtcars1)
+
+p<-ggplot(mtcars1, aes(wt, resid$rmpg, color=factor(am))) + geom_point(size=3)
+p<-p+ggtitle("Residuals mpg versus weight")
+p<-p+labs(x="weight (1000's of lbs)", y="residuals")
+p<-p+geom_smooth(method=lm,se=TRUE)
+p
 
 ```
  
 
-##nonlinear model of mpg versus wt
+##a linear model wiht confounding variables
 
 To fit the data try a functional relationship _mpg~ a + b/wt_ with a and b constants to be determined. The graph below shows the fit. 
+
+```{r}
+library(plyr)
+library(ggplot2)
+data(mtcars)
+
+
+mtcars2=mutate(mtcars1, invwt=1/wt)
+mtcars2=mutate(mtcars2, invdisp=1/disp)
+
+p1<-ggplot(mtcars2, aes(invwt, mpg, color=factor(am))) + geom_point(size=3)
+p1<-p1+ggtitle("mpg versus 1/weight")
+p1<-p1+labs(x="1/weight (1/1000's of lbs)", y="miles per gallon")
+#p1<-p1+geom_smooth(method=lm)
+
+
+f2<-lm(mpg~ invwt + invdisp, data=mtcars2)
+int<-coef(f2)[1]
+slp<-coef(f2)[2]
+
+
+p1<-p1+geom_abline(intercept=int, slope=slp)
+p1
+
+
+```
+
 
 ```{r}
 
