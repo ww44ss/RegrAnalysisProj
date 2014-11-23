@@ -1,0 +1,7 @@
+---
+title: "Project Regression"
+author: "Winston _November 23, 2014_"
+output: pdf_document
+---
+
+

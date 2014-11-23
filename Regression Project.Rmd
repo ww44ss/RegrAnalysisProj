@@ -1,0 +1,97 @@
+---
+title: "Project Regression"
+author: "Winston _November 23, 2014_"
+output: pdf_document
+---
+
+
+###Executive Summary
+
+This analysis looks at factors affecting the efficiency (__mpg__) of cars in the Motor Trend data set. Particularly, it addresses the hypothesis that manual transmissions are more efficient than automatic transmissions. 
+
+The conclusion of the analysis is that we cannot reject the null hypothesis. There is no significan difference, for the cars in this data set, in the miles per gallon of automatic versus manual transmissions.
+
+
+###Exploratory data analysis
+
+
+```{r, echo=FALSE}
+data(mtcars)
+library(plyr)
+library(ggplot2)
+
+##clean up factor
+mtcars$am <- as.factor(mtcars$am)
+levels(mtcars$am) <-c("Automatic", "Manual")
+
+
+##create new data columns for inverse weight adn displacement
+
+
+mtcars2<-mutate(mtcars, invwt=1/wt)
+mtcars2<-mutate(mtcars2, invdisp=1/disp)
+
+
+```
+  
+
+There are data for `r nrow(mtcars2)` cars in the __mtcars__ data set representing _`r colnames(mtcars)`_.  Of interest here are:
+__mpg__ - Miles/(US) gallon, __disp__ - Displacement (cu.in.), __wt__ - Weight (lb/1000), __am__ - Transmission (0 = automatic, 1 = manual).
+
+A exploratory graph (shown in the Appendix) of the influence of three variables, __wt__, __disp__, and __am__ on __mpg__ show depenencies on each.
+
+##A simple linear model is insufficient
+
+
+```{r, echo=FALSE, fig.align='center'}
+library(plyr)
+library(ggplot2)
+data(mtcars)
+
+p1<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point(size=3)
+p1<-p1+ggtitle("mpg versus weight")
+p1<-p1+labs(x="weight (1000's of lbs)", y="miles per gallon")
+p1<-p1+geom_smooth(method=lm)
+
+
+f1<-lm(mpg~ wt, data=mtcars)
+int<-coef(f1)[1]
+slp<-coef(f1)[2]
+
+
+plot_linear_wt<-p1+geom_abline(intercept=int, slope=slp, col="grey80")
+
+##note output of this graph is supressed to the appendix.
+
+
+```
+
+
+A model of mpg fitted against weight accounts for about `r round(100*summary(f1)$r.squared, 1)`% of the overall variation. However, there are are systematic variations unaccounted for in the model. This can be seen by the below plot of the residuals, factored for automatic versus manual transmission.   
+
+
+```{r, echo=FALSE, fig.width=5, fig.height=3}
+
+
+
+rmpg<-residuals(f1)
+resid<-as.data.frame(rmpg)
+
+mtcars2<-cbind(mtcars2, resid$rmpg)
+
+p<-ggplot(mtcars2, aes(wt, resid$rmpg, color=factor(am))) + geom_point(size=2)
+p<-p+ggtitle("Simple Model Residuals")
+p<-p+labs(x="weight (1000's of lbs)", y="residuals")
+p<-p+geom_smooth(method=lm,se=TRUE)
+p<-p+coord_cartesian(ylim = c(-8, 8)) 
+
+p
+
+```
+ 
+The residuals for manual transmission, with > 95% confidence, show a systematic dependency not accounted for in the model.   
+
+
+
+
+

@@ -1,54 +1,48 @@
 ---
-title: "Project"
-author: "Winston"
-date: "November 9, 2014"
+title: "Regression Class Project"
+author: "_Winston Saunders_ November 2014"
 output: pdf_document
 ---
 
-###Executive Summary
+##Executive Summary
 
-This analysis looks at the energy efficiency (~ mpg) of cars in the Motor Trend data set and the factors affecting it. Particularly, it addresses the hyptohesis that manual transmissions are more efficient (have higher mpg) than automatic transmissions. 
+This analysis looks at factors affecting the efficiency (__mpg__) of cars in the Motor Trend data set. Particularly, it addresses the hypothesis that manual transmissions are more efficient than automatic transmissions. 
 
-To address this, the analysis takes the approach of linearizing the "physics" by looking at the affects of confounding variables like horsepower (hp) and vehicle weight (wt) on gallons per mile. 
+The conclusion of the analysis is that we cannot reject the null hypothesis. There is no significan difference, for the cars in this data set, in the miles per gallon of automatic versus manual transmissions.
 
-###exploratory data analysis
 
-```{r}
+##Exploratory data analysis
+
+
+```{r echo=FALSE}
 data(mtcars)
 library(plyr)
+library(ggplot2)
 
-mtcars2=mutate(mtcars, gpm=1/mpg)
+##clean up factor
+mtcars$am <- as.factor(mtcars$am)
+levels(mtcars$am) <-c("Automatic", "Manual")
 
-pairs(mpg~disp+am+wt,data=mtcars, 
-   main="Exploratory Analysis")
+
+##create new data columns for inverse weight adn displacement
+
+
+mtcars2<-mutate(mtcars, invwt=1/wt)
+mtcars2<-mutate(mtcars2, invdisp=1/disp)
+
 
 ```
   
 
-There are data for `r nrow(mtcars)` different cars in the data set.  
-The data present are _`r colnames(mtcars)`_.  
+There are data for `r nrow(mtcars)` cars in the __mtcars__ data set representing _`r colnames(mtcars)`_.  Of interest here are:
+__mpg__ - Miles/(US) gallon, __disp__ - Displacement (cu.in.), __wt__ - Weight (lb/1000), __am__ - Transmission (0 = automatic, 1 = manual).
 
-mpg	Miles/(US) gallon
-cyl	Number of cylinders
-disp	Displacement (cu.in.)
-hp	Gross horsepower
-drat	Rear axle ratio
-wt	Weight (lb/1000)
-qsec	1/4 mile time
-vs	V/S
-am	Transmission (0 = automatic, 1 = manual)
-gear	Number of forward gears
-carb	Number of carburetors
+A exploratory graph (shown in the Appendix) of the influence of three variables, __wt__, __disp__, and __am__ on __mpg__ show depenencies on each.
 
-The exploratory analysis shows there are multiple dependencies. To understand how transmission type affects mpg we need account for these other factors. 
+##A simple linear model is insufficient   
 
 
-As you can see from the graph, displacement and horsepower tend to follow weigth. So we'll focus on correcting for the weight factor in mpg and look at residual.
-
-##linear Model with weight as predictor is insufficient
-
-
-```{r}
+```{r, echo=FALSE, fig.width=5, fig.height=3, fig.align='center'}
 library(plyr)
 library(ggplot2)
 data(mtcars)
@@ -56,7 +50,7 @@ data(mtcars)
 p1<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point(size=3)
 p1<-p1+ggtitle("mpg versus weight")
 p1<-p1+labs(x="weight (1000's of lbs)", y="miles per gallon")
-#p1<-p1+geom_smooth(method=lm)
+p1<-p1+geom_smooth(method=lm)
 
 
 f1<-lm(mpg~ wt, data=mtcars)
@@ -64,159 +58,148 @@ int<-coef(f1)[1]
 slp<-coef(f1)[2]
 
 
-p1<-p1+geom_abline(intercept=int, slope=slp)
-p1
+plot_linear_wt<-p1+geom_abline(intercept=int, slope=slp, col="darkmagenta")
+
 
 
 ```
 
 
-In the above graph the fitted line does not go an adequate job of accounting for about `r 100*summary(f1)$r.squared`% of the overall variation. It is easily recognized that there are systematic variations tht are un accounted for by looking at a residual plot of the data for automatic and manual transmissions.
 
 
-```{r}
+A model of mpg fitted against weight accounts for about `r round(100*summary(f1)$r.squared, 1)`% of the overall variation. However, there are are systematic variations unaccounted for in the model. This can be seen by the below plot of the residuals, factored for automatic versus manual transmission. 
+
+
+
+
+```{r, echo=FALSE,fig.width=5, fig.height=3}
 
 
 
 rmpg<-residuals(f1)
 resid<-as.data.frame(rmpg)
 
-resid$rmpg
+mtcars2<-cbind(mtcars2, resid$rmpg)
 
-mtcars1<-cbind(mtcars, resid$rmpg)
-
-head(mtcars1)
-
-p<-ggplot(mtcars1, aes(wt, resid$rmpg, color=factor(am))) + geom_point(size=3)
-p<-p+ggtitle("Residuals mpg versus weight")
+p<-ggplot(mtcars2, aes(wt, resid$rmpg, color=factor(am))) + geom_point(size=2)
+p<-p+ggtitle("Simple Model Residuals")
 p<-p+labs(x="weight (1000's of lbs)", y="residuals")
 p<-p+geom_smooth(method=lm,se=TRUE)
+p<-p+coord_cartesian(ylim = c(-8, 8)) 
 p
 
 ```
  
+The residuals for manual transmission, with > 95% confidence, show a systematic dependency not accounted for in the model.  
 
-##a linear model wiht confounding variables
+##An improved model: including interaction terms and matching the model to physics.
 
-To fit the data try a functional relationship _mpg~ a + b/wt_ with a and b constants to be determined. The graph below shows the fit. 
+After comparing several models, the model __mpg__ ~ __am__ + __1/ wt__ + __1/disp__ improves the analysis with greatest parsimony. The graph below shows that residuals for the model do not show strong systematic variation with __am__.  
 
-```{r}
+The inverse relationship on __wt__ and __disp__ is what one would expect from the "physics" of the problem since both mass and engine displacment would be expected to relate proportionally to energy and fule consumption.   
+
+
+```{r, echo=FALSE, fig.align='center', fig.width=5, fig.height=3}
 library(plyr)
 library(ggplot2)
-data(mtcars)
 
-
-mtcars2=mutate(mtcars1, invwt=1/wt)
-mtcars2=mutate(mtcars2, invdisp=1/disp)
-
-p1<-ggplot(mtcars2, aes(invwt, mpg, color=factor(am))) + geom_point(size=3)
+##plot of data versus inverse weight
+p1<-ggplot(mtcars2, aes(invwt, mpg, color=factor(am))) + geom_point(size=2)
 p1<-p1+ggtitle("mpg versus 1/weight")
 p1<-p1+labs(x="1/weight (1/1000's of lbs)", y="miles per gallon")
-#p1<-p1+geom_smooth(method=lm)
+p1<-p1+geom_smooth(method=lm)
 
 
-f2<-lm(mpg~ invwt + invdisp, data=mtcars2)
+f2<-lm(mpg~ invwt, data=mtcars2)
 int<-coef(f2)[1]
 slp<-coef(f2)[2]
 
 
-p1<-p1+geom_abline(intercept=int, slope=slp)
-p1
+plot_inv_wt<-p1+geom_abline(intercept=int, slope=slp, col="darkmagenta")
 
 
 ```
 
 
-```{r}
+```{r, echo=FALSE, fig.align='center', fig.width=5, fig.height=3}
 
+f3<-lm(mpg~ invwt + invdisp, data=mtcars2)
 
-carnls <- nls(mpg~a1 + b1/hp, mtcars, start = list(a1=1, b1=50))
+rmpg3<-residuals(f3)
+resid<-as.data.frame(rmpg3)
 
+mtcars2<-cbind(mtcars2, resid$rmpg3)
 
-carnls
-
-ss<-seq(from = min(mtcars$hp), to = max(mtcars$hp), length = 50)
-
-
-plot(jitter(mpg,4)~hp, data=mtcars, pch=19, col="slateblue2", xlab="horsepower", ylab="mpg")
-
-
-yy <- predict(carnls,list(hp = ss))
-
-lines(ss, yy, col = "orange4", lwd=3)
-
-```
-
-###Model Residuals
-
-```{r}
-
-mpgpredict<-predict(carnls)
-
-plot((mpg-mpgpredict)~hp, data=mtcars)
-
-hist(mtcars$mpg-mpgpredict, breaks=18, col="wheat3", xlab="mpg residual", main="Histogram of mpg residuals")
-
-residuals(carnls)
-
-```
-
-
-```{r}
-library(plyr)
-
-mpgresids <- mtcars$mpg-mpgpredict
-
-mtcars2<-cbind(mtcars, mpgresids)
-
-p<-ggplot(mtcars2, aes(wt, mpgresids, color=factor(am))) + geom_point()
-
-p
-
-p<-ggplot(mtcars, aes(hp, wt, color=factor(am))) + geom_point()
-
+p<-ggplot(mtcars2, aes(invwt, resid$rmpg3, color=factor(am))) + geom_point(size=2)
+p<-p+ggtitle("Model 4 Residuals")
+p<-p+labs(x="inverse weight (1000's of lbs)", y="residuals")
+p<-p+geom_smooth(method=lm,se=TRUE)
+p<-p+coord_cartesian(ylim = c(-8, 8))
 p
 
 ```
 
+Using "Model 4" below was found to produce the best results with least complexity.
 
 ```{r}
-library(plyr)
 
-## calculate residuals ad bind to mtcars to do some plotting
+f4<-lm(mpg~ factor(am) + invwt+invdisp, data=mtcars2)
 
-mpgresids <- mtcars$mpg-mpgpredict
-
-mtcars2<-cbind(mtcars, mpgresids)
-
-p<-ggplot(mtcars2, aes(wt, mpgresids, color=factor(am))) + geom_point()
-
-p
-
-p<-ggplot(mtcars, aes(wt, mpg, color=factor(am))) + geom_point()
-
-p
 
 ```
 
+This model accounts for `r round(100*summary(f4)$r.squared, 1)`% of the variation, a signifcant improvement from the simple model above.  
 
-```{r}
-##here we do statistics on the residuals
+Based on the fit coefficients, a manual transmission has `r round(summary(f4)$coefficients[2,1],2)` lower miles per gallon, however, the standard error `r round(summary(f4)$coefficients[2,2],2)` has a t-statistic of `r round(summary(f4)$coefficients[2,3],2)` results in a p-value of `r round(summary(f4)$coefficients[2,4],2)` which is above our tolerance of 0.05. Hence, we reject the null hypothesis.  
+_Per this analysis there is no statistically significant difference in mpg for manual versus automatic transmissions._
+  
+    
+   
+#Appendices
 
+###Exploratory analysis
+This graph looks at the dependency of mpg on displacement (__disp__), automatic versus manual transmission(__am__), and vehcile weight (__wt__) in 1000's of lbs.
 
-autoresids <- mtcars2[mtcars$am==0,]
-manresids <- mtcars2[mtcars$am==1,]
+```{r, fig.align='center', echo=FALSE, fig.width=5}
 
-meanautoresids<-mean(autoresids$mpgresids)
-sdautoresids<-sd(autoresids$mpgresids)
-nautoresids <- nrow(autoresids)
+##plot pairs of displacement, am, and weight
+pairs(mpg~disp+am+wt,data=mtcars2, 
+   main="Exploratory Analysis")
+```
 
-meanmanresids<-mean(manresids$mpgresids)
-sdmanresids<-sd(manresids$mpgresids)
-nmanresids <- nrow(manresids)
+###Plot of a linear model of mpg~wt
 
+A fit of mpg versus weight shows a correlation. Fits for different transmission types do not line up well with the fit of the overall data (shown in magenta).  
 
-aaa<-t.test(autoresids$mpgresids, manresids$mpgresids, alternative="less")
-pv<-aaa$p.value
-lc<-aaa$conf.int[1]
-uc<-aaa$conf.int[2]
+```{r, echo=FALSE, fig.align='center', fig.height=3}
+plot_linear_wt
+```
+
+###Plot of mpg~inverse weight
+
+A fit of mpg versus inverse weight. Fits of the data for different transmissions types line up better with the overall fit (shown in magenta), showing how an improved "physical" interpretation of the model improves overall fit.
+
+```{r, echo=FALSE, fig.align='center', fig.height=3}
+plot_inv_wt
+```
+
+###Comparison of the simple linear versus Model 4
+
+The Anova shows Model 4 significantly reduces the variances.
+
+```{r, echo=FALSE} 
+anova(f1, f4)
+```
+
+###Model 4
+
+Summary plot for "Model 4" show the residuals follow a normal distribution to good degree, though some points still could be investigated further. 
+
+```{r, echo=FALSE, fig.height=6}  
+
+summary(f4)
+
+par(mfrow=c(2,2))  
+plot(f4)
+```
+
